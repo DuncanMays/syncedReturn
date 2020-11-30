@@ -3,9 +3,8 @@ const process = require('process');
 
 const central_model = tf.sequential();
 
-central_model.add(tf.layers.dense({units: 500, inputShape: [784], activation: 'relu'}))
-central_model.add(tf.layers.dense({units: 200, activation: 'relu'}))
-central_model.add(tf.layers.dense({units: 200, activation: 'relu'}))
+central_model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
+central_model.add(tf.layers.dense({units: 20, activation: 'relu'}))
 central_model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
 central_model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
@@ -14,13 +13,13 @@ let central_parameters = marshal_parameters(central_model.getWeights())
 // stop training after this number of milliseconds
 run_time = 1000*60;
 
-// turns the parameter object that model.getWeights into an array that is JSON serializable
+// turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
   let params = param_tensor.map(x => x.arraySync());
   return params;
 }
 
-// turns the JSON serializable parameter array into a paramter object composed of tensors that can be passed to model.setWeights
+// turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
 function demarshall_parameters(param_array) {
   let params = param_array.map(x => tf.tensor(x));
   return params;
@@ -30,12 +29,24 @@ function progress(input) {
   console.log('progress ', input);
 }
 
-async function workFn(input) {
+async function workFn(slice_input, shared_input) {
   // imports the required modules
   tf = require('tfjs');
   tf.setBackend('cpu');
   await tf.ready();
   mnist = require('mnist.js');
+
+  // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
+  function marshal_parameters(param_tensor) {
+    let params = param_tensor.map(x => x.arraySync());
+    return params;
+  }
+
+  // turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
+  function demarshall_parameters(param_array) {
+    let params = param_array.map(x => tf.tensor(x));
+    return params;
+  }
 
   await progress(0);
 
@@ -45,8 +56,7 @@ async function workFn(input) {
   await progress(0.1);
 
   // the time that this worker will stop trianing and return to client
-  const stop_time = input.deploy_time + input.run_time;
-
+  const stop_time = shared_input.deploy_time + shared_input.run_time;
 
   // we now define our model
   const model = tf.sequential();
@@ -57,8 +67,11 @@ async function workFn(input) {
 
   model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
 
-  await console.log('starting download of mnist');
+  // we now set the weights of our model
+  let params = demarshall_parameters(shared_input.params);
+  model.setWeights(params);
 
+  await console.log('starting download of mnist');
 
   // downloads MNIST shard 1 out of 12
   let data = await mnist.load(1);
@@ -87,12 +100,12 @@ async function workFn(input) {
           console.log('training time exceeded');
           model.stopTraining = true;
         } else {
-          progress((0.95 - data_load_progress)*((Date.now() - input.deploy_time)/input.run_time) + data_load_progress);
+          progress((0.95 - data_load_progress)*((Date.now() - shared_input.deploy_time)/shared_input.run_time) + data_load_progress);
         }
       }
     }});
 
-  return input;
+  return 'success';
 }
 
 async function main() {
@@ -107,15 +120,21 @@ async function main() {
   let slices = [];
   let worker_input
   for (let i=0; i<num_workers; i++) {
-    worker_input = {
-      deploy_time: deploy_time,
-      run_time: run_time
+    let slice_input = {
+      slice_number: i
     };
 
-    slices = slices.concat(worker_input);
+    slices = slices.concat(slice_input);
   }
+
+  let shared_input = {
+    deploy_time: deploy_time,
+    run_time: run_time,
+    params: central_parameters
+  };
   
-  let job = compute.for(slices, workFn);
+  // I have no idea why the last parameter, shared input, needs to be in an array, all I know is that this works
+  let job = compute.for(slices, workFn, [shared_input]);
 
   job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
 
