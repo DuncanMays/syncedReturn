@@ -11,7 +11,9 @@ central_model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: 
 
 let central_parameters = marshal_parameters(central_model.getWeights())
 // stop training after this number of milliseconds
-run_time = 1000*60;
+const run_time = 1000*60;
+const num_workers_per_job = 5;
+let compute;
 
 // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
@@ -125,18 +127,37 @@ async function workFn(slice_input, shared_input) {
   return return_obj;
 }
 
-async function main() {
-  // the compute api
-  await require('dcp-client').init(process.argv);
-  const compute = require('dcp/compute');
+function aggregate(parameter_array) {
+  // splitting the input into the parameter sets and the weights for each parameter set
+  let params = parameter_array.map(x => demarshall_parameters(x.params));
+  let weights = parameter_array.map(x => x.completed_batches);
 
-  const num_workers = 5;
+  // normalizing the weights
+  let sum = 0;
+  weights.map((x) => {sum = sum + x});
+  weights = weights.map(x => x/sum);
+
+  // multiplying the parameters by the weights
+  params = params.map((element, index) => {
+    weight = weights[index];
+    // remember that each parameter set is an array of tensors representing the parameters of each layer
+    element = element.map(tensor => tensor.mul(weight));
+  });
+
+  new_params = params[0];
+  for (let i=1; i<params.length; i++) {
+    summand = params[i];
+  }
+}
+
+async function deploy_learning_job() {
   const deploy_time = Date.now();
+  let return_objs = [];
 
   // each worker will be given an object that tells it when the job was deployed and how long since then to return
   let slices = [];
   let worker_input
-  for (let i=0; i<num_workers; i++) {
+  for (let i=0; i<num_workers_per_job; i++) {
     let slice_input = {
       slice_number: i
     };
@@ -161,9 +182,9 @@ async function main() {
 
   job.on('console', (msg) => {console.log("a worker logged: ", msg.message);});
 
-  job.on('result', (value) => {
-    console.log("Got a result: ")
-    
+  job.on('result', (result) => {
+    console.log("Got a result from worker", result.sliceNumber);
+    return_objs = return_objs.concat(result.result);
   });
 
   job.on('noProgress', (e) => {
@@ -183,7 +204,17 @@ async function main() {
 
   let results = await job.exec(compute.marketValue);
 
-  process.exit()
+  aggregate(return_objs);
+}
+
+async function main() {
+  // the compute api
+  await require('dcp-client').init(process.argv);
+  compute = require('dcp/compute');
+
+  await deploy_learning_job();  
+
+  process.exit();
 }
 
 main();
