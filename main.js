@@ -50,7 +50,18 @@ async function workFn(slice_input, shared_input) {
 
   await progress(0);
 
-  // in worker, console.log sends the iven string back to the client and so is async
+  // // makes sure the worker starts a second after deploy_time
+  // const wait_time = 1000 + shared_input.deploy_time - Date.now();
+  // if (wait_time > 0) {
+  //   // waits for a given amount of time
+  //   await new Promise((resolve, reject) => {
+  //     setTimeout(() => {
+  //       resolve();
+  //     }, wait_time);
+  //   })
+  // }
+
+  // in worker, console.log sends the given string back to the client and so is async
   await console.log('worker start');
 
   await progress(0.1);
@@ -78,8 +89,8 @@ async function workFn(slice_input, shared_input) {
   await progress(0.15);
 
   // preprocesses data
-  let imagesTensor = await tf.tensor2d( data.images, [ data.images.length / 784, 784] );
-  let labelsTensor = await tf.tensor2d( data.labels, [ data.labels.length / 10, 10 ] );
+  let imagesTensor = await tf.tensor2d(data.images, [data.images.length / 784, 784]);
+  let labelsTensor = await tf.tensor2d(data.labels, [data.labels.length / 10, 10]);
 
   const data_load_progress = 0.2;
   await progress(data_load_progress);
@@ -103,9 +114,15 @@ async function workFn(slice_input, shared_input) {
           progress((0.95 - data_load_progress)*((Date.now() - shared_input.deploy_time)/shared_input.run_time) + data_load_progress);
         }
       }
-    }});
+    }
+  });
 
-  return 'success';
+  const return_obj = {
+    completed_batches: completedBatches,
+    params: marshal_parameters(model.getWeights())
+  };
+
+  return return_obj;
 }
 
 async function main() {
@@ -144,7 +161,10 @@ async function main() {
 
   job.on('console', (msg) => {console.log("a worker logged: ", msg.message);});
 
-  job.on('result', (value) => console.log("Got a result: ", value.result));
+  job.on('result', (value) => {
+    console.log("Got a result: ")
+    
+  });
 
   job.on('noProgress', (e) => {
     console.log('noProgress');
