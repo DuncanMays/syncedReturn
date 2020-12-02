@@ -52,17 +52,17 @@ function aggregate(parameter_array) {
     return element;
   });
 
-  // summing the arrays or tensors
+  // summing the arrays of tensors
   let new_params = [];
-  for (let i=0; i<params.length; i++) {
+  for (let i=0; i<params[0].length; i++) {
     let summands = [];
-    for (let j=0; j<params[0].length; j++) {
-      summands.push(params[i][j]);
+    for (let j=0; j<params.length; j++) {
+      summands.push(params[j][i]);
     }
-    new_params.push(tf.sum(summands));
+    new_params.push(tf.stack(summands).sum(dim=0));
   }
 
-  return new_params;
+  return new_params
 }
 
 async function deploy_learning_job() {
@@ -128,11 +128,14 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  const worker_params = await deploy_learning_job();  
-  // I wrote a functio to return fake results so we don't have to wait for DCP every time we test aggregation
-  // const worker_params = test.fake_results(5);
+  // const worker_params = await deploy_learning_job();
 
-  // const new_params = aggregate(worker_params)
+  // I wrote a function to return fake results so we don't have to wait for DCP every time we test aggregation
+  const worker_params = test.fake_results(5);
+
+  const new_params = aggregate(worker_params)
+
+  central_model.setWeights(new_params);
 
   process.exit();
 }
