@@ -1,6 +1,9 @@
 const tf = require("@tensorflow/tfjs-node");
 const process = require('process');
 
+const test = require('./test_suite.js');
+const workFn = require('./work_fn.js').work;
+
 const central_model = tf.sequential();
 
 central_model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
@@ -31,102 +34,6 @@ function progress(input) {
   console.log('progress ', input);
 }
 
-async function workFn(slice_input, shared_input) {
-  // imports the required modules
-  tf = require('tfjs');
-  tf.setBackend('cpu');
-  await tf.ready();
-  mnist = require('mnist.js');
-
-  // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
-  function marshal_parameters(param_tensor) {
-    let params = param_tensor.map(x => x.arraySync());
-    return params;
-  }
-
-  // turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
-  function demarshall_parameters(param_array) {
-    let params = param_array.map(x => tf.tensor(x));
-    return params;
-  }
-
-  await progress(0);
-
-  // // makes sure the worker starts a second after deploy_time
-  // const wait_time = 1000 + shared_input.deploy_time - Date.now();
-  // if (wait_time > 0) {
-  //   // waits for a given amount of time
-  //   await new Promise((resolve, reject) => {
-  //     setTimeout(() => {
-  //       resolve();
-  //     }, wait_time);
-  //   })
-  // }
-
-  // in worker, console.log sends the given string back to the client and so is async
-  await console.log('worker start');
-
-  await progress(0.1);
-
-  // the time that this worker will stop trianing and return to client
-  const stop_time = shared_input.deploy_time + shared_input.run_time;
-
-  // we now define our model
-  const model = tf.sequential();
-
-  model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-  model.add(tf.layers.dense({units: 20, activation: 'relu'}))
-  model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
-
-  model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
-
-  // we now set the weights of our model
-  let params = demarshall_parameters(shared_input.params);
-  model.setWeights(params);
-
-  await console.log('starting download of mnist');
-
-  // downloads MNIST shard 1 out of 12
-  let data = await mnist.load(1);
-  await progress(0.15);
-
-  // preprocesses data
-  let imagesTensor = await tf.tensor2d(data.images, [data.images.length / 784, 784]);
-  let labelsTensor = await tf.tensor2d(data.labels, [data.labels.length / 10, 10]);
-
-  const data_load_progress = 0.2;
-  await progress(data_load_progress);
-
-  await console.log('starting training');
-
-  let completedBatches = 0;
-  await model.fit(imagesTensor, labelsTensor, {
-    yieldEvery: 5000,
-    epochs: 100,
-    callbacks: {
-      onBatchEnd: (batch, logs) => {
-          completedBatches = completedBatches + 1;
-      },
-      onYield: (epoch, batch, logs) => {
-        if (Date.now() > stop_time) {
-          // stops training if the time limit is exceeded
-          console.log('training time exceeded');
-          model.stopTraining = true;
-        } else {
-          progress((0.95 - data_load_progress)*((Date.now() - shared_input.deploy_time)/shared_input.run_time) + data_load_progress);
-        }
-      }
-    }
-  });
-
-  const return_obj = {
-    completed_batches: completedBatches,
-    params: marshal_parameters(model.getWeights())
-  };
-
-  return return_obj;
-}
-
 function aggregate(parameter_array) {
   // splitting the input into the parameter sets and the weights for each parameter set
   let params = parameter_array.map(x => demarshall_parameters(x.params));
@@ -142,12 +49,20 @@ function aggregate(parameter_array) {
     weight = weights[index];
     // remember that each parameter set is an array of tensors representing the parameters of each layer
     element = element.map(tensor => tensor.mul(weight));
+    return element;
   });
 
-  new_params = params[0];
-  for (let i=1; i<params.length; i++) {
-    summand = params[i];
+  // summing the arrays or tensors
+  let new_params = [];
+  for (let i=0; i<params.length; i++) {
+    let summands = [];
+    for (let j=0; j<params[0].length; j++) {
+      summands.push(params[i][j]);
+    }
+    new_params.push(tf.sum(summands));
   }
+
+  return new_params;
 }
 
 async function deploy_learning_job() {
@@ -184,7 +99,7 @@ async function deploy_learning_job() {
 
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
-    return_objs = return_objs.concat(result.result);
+    return_objs.push(result.result);
   });
 
   job.on('noProgress', (e) => {
@@ -204,7 +119,8 @@ async function deploy_learning_job() {
 
   let results = await job.exec(compute.marketValue);
 
-  aggregate(return_objs);
+  return results;
+
 }
 
 async function main() {
@@ -212,7 +128,11 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  await deploy_learning_job();  
+  const worker_params = await deploy_learning_job();  
+  // I wrote a functio to return fake results so we don't have to wait for DCP every time we test aggregation
+  // const worker_params = test.fake_results(5);
+
+  // const new_params = aggregate(worker_params)
 
   process.exit();
 }
