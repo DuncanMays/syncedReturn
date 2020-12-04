@@ -93,7 +93,7 @@ async function deploy_learning_job() {
 
   job.on('status', (status) => {console.log("Got a status update: ", status);});
 
-  job.on('error', (err) => {console.log("there was an error: ", err);});
+  job.on('error', (err) => {console.log('there was an error: ', err);});
 
   job.on('console', (msg) => {console.log("a worker logged: ", msg.message);});
 
@@ -110,7 +110,7 @@ async function deploy_learning_job() {
   // aistensorflow/tfjs gives us tfjs
   // colab-data/mnist gives us MNIST, libpng/libpng is a dependancy of this
   // dcp-polyfills/polyfills is just generally a good thing to have, it polyfills a lot of JS things that aren't normally offered in worker
-  job.requires('aitf-mnist-shard/mnist.js');
+  job.requires('tlr-mnist-shard/mnist.js');
   // job.requires('dcp-polyfills/polyfills');
   job.requires('aistensorflow/tfjs');
 
