@@ -10,6 +10,7 @@
   "description": "",
   "dependencies": {
     "@tensorflow/tfjs-node": "^2.7.0",
-    "dcp-client": "^3.2.2"
+    "dcp-client": "^3.2.2",
+    "mnist": "^1.1.0"
   }
 }

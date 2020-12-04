@@ -56,7 +56,7 @@ async function workFn(slice_input, shared_input) {
   await console.log('starting download of mnist');
 
   // downloads MNIST shard 1 out of 12
-  let data = await mnist.load(1);
+  let data = await mnist.load(Math.round(12*Math.random()));
   await progress(0.15);
 
   // preprocesses data

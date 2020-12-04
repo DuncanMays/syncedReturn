@@ -1,9 +1,11 @@
 const tf = require("@tensorflow/tfjs-node");
 const process = require('process');
+const mnist = require('mnist');
 
 const test = require('./test_suite.js');
 const workFn = require('./work_fn.js').work;
 
+// defining the model to train
 const central_model = tf.sequential();
 
 central_model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
@@ -11,8 +13,15 @@ central_model.add(tf.layers.dense({units: 20, activation: 'relu'}))
 central_model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
 central_model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
-
 let central_parameters = marshal_parameters(central_model.getWeights())
+
+// we now import testing data for performance evaluation
+const testing_data = mnist.set(0, 10000).test;
+
+// formatting testing data 
+const testing_input = tf.tensor(testing_data.map(x => x.input));
+const testing_output = tf.tensor(testing_data.map(x => x.output));
+
 // stop training after this number of milliseconds
 const run_time = 1000*60;
 const num_workers_per_job = 5;
@@ -28,10 +37,6 @@ function marshal_parameters(param_tensor) {
 function demarshall_parameters(param_array) {
   let params = param_array.map(x => tf.tensor(x));
   return params;
-}
-
-function progress(input) {
-  console.log('progress ', input);
 }
 
 function aggregate(parameter_array) {
@@ -120,13 +125,15 @@ async function deploy_learning_job() {
   let results = await job.exec(compute.marketValue);
 
   return results;
-
 }
 
 async function main() {
   // the compute api
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
+
+  let loss = central_model.evaluate(testing_input, testing_output);
+  console.log("here is the model's loss on testing data:", loss.arraySync());
 
   const worker_params = await deploy_learning_job();
 
@@ -136,6 +143,9 @@ async function main() {
   const new_params = aggregate(worker_params)
 
   central_model.setWeights(new_params);
+
+  loss = central_model.evaluate(testing_input, testing_output);
+  console.log("here is the model's loss on testing data:", loss.arraySync());
 
   process.exit();
 }
