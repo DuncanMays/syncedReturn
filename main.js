@@ -128,10 +128,10 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  // const worker_params = await deploy_learning_job();
+  const worker_params = await deploy_learning_job();
 
   // I wrote a function to return fake results so we don't have to wait for DCP every time we test aggregation
-  const worker_params = test.fake_results(5);
+  // const worker_params = test.fake_results(5);
 
   const new_params = aggregate(worker_params)
 
