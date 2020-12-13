@@ -5,14 +5,8 @@ const mnist = require('mnist');
 const test = require('./test_suite.js');
 const workFn = require('./work_fn.js').work;
 
-// defining the model to train
-const central_model = tf.sequential();
+const central_model = make_model();
 
-central_model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-central_model.add(tf.layers.dense({units: 20, activation: 'relu'}))
-central_model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
-
-central_model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
 let central_parameters = marshal_parameters(central_model.getWeights())
 
 // we now import testing data for performance evaluation
@@ -27,6 +21,20 @@ const run_time = 1000*60;
 const num_workers_per_job = 5;
 let compute;
 
+// this function defines a new instantiation of the model we want to train
+function make_model() {
+  // defining the model to train
+  const model = tf.sequential();
+
+  model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
+  model.add(tf.layers.dense({units: 20, activation: 'relu'}))
+  model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
+
+  model.compile({loss: tf.losses.meanSquaredError, metrics:['accuracy'], optimizer: tf.train.adam()});
+
+  return model;
+}
+  
 // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
   let params = param_tensor.map(x => x.arraySync());
@@ -39,6 +47,7 @@ function demarshall_parameters(param_array) {
   return params;
 }
 
+// aggregates parameters returned from worker
 function aggregate(parameter_array) {
   // splitting the input into the parameter sets and the weights for each parameter set
   let params = parameter_array.map(x => demarshall_parameters(x.params));
@@ -70,6 +79,20 @@ function aggregate(parameter_array) {
   return new_params
 }
 
+// returns the performance of a set of paramters on testing data
+// calls evaluate on a model with the given parameters, and so will return an array containing the loss and any metrics
+function get_param_performance(worker_params){
+  // gets an instance of the model in question
+  const model = make_model();
+  // sets that model's parameters to the given parameter set
+  model.setWeights(worker_params);
+  // gets its performance on testing data
+  const performance = model.evaluate(testing_input, testing_output);
+  // evaluate returns an array of tensors, we want straight numbers, so we call arraySync on every element in performance and return the result
+  return performance.map(x => x.arraySync());
+}
+
+// this function deploys a job that executes workFn in workers
 async function deploy_learning_job() {
   const deploy_time = Date.now();
   let return_objs = [];
@@ -105,6 +128,11 @@ async function deploy_learning_job() {
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
     return_objs.push(result.result);
+
+    // this block of code tests the performance of the returned parameter set
+    const worker_params = demarshall_parameters(result.result.params);
+    const performance = get_param_performance(worker_params);
+    console.log('the parameters returned from worker had a loss and accuracy of', performance);
   });
 
   job.on('noProgress', (e) => {
@@ -132,8 +160,8 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  let loss = central_model.evaluate(testing_input, testing_output);
-  console.log("here is the model's loss on testing data:", loss.arraySync());
+  let performance = central_model.evaluate(testing_input, testing_output);
+  console.log("here is the model's loss and accuracy on testing data:", performance.map(x => x.arraySync()));
 
   const worker_params = await deploy_learning_job();
 
@@ -144,8 +172,8 @@ async function main() {
 
   central_model.setWeights(new_params);
 
-  loss = central_model.evaluate(testing_input, testing_output);
-  console.log("here is the model's loss on testing data:", loss.arraySync());
+  performance = central_model.evaluate(testing_input, testing_output);
+  console.log("here is the model's loss and accuracy on testing data:", performance.map(x => x.arraySync()));
 
   process.exit();
 }
