@@ -3,7 +3,8 @@ const process = require('process');
 const mnist = require('mnist');
 
 const test = require('./test_suite.js');
-const workFn = require('./work_fn.js').work;
+// const workFn = require('./work_fn.js').work;
+const workFn = require('./work_fn_with_benchmark_and_delay.js').work;
 
 const central_model = make_model();
 
