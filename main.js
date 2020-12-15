@@ -124,7 +124,7 @@ async function deploy_learning_job() {
 
   job.on('error', (err) => {console.log('there was an error: ', err);});
 
-  job.on('console', (msg) => {console.log("a worker logged: ", msg.message);});
+  job.on('console', (msg) => {console.log("worker "+msg.sliceIndex+" logged: "+msg.message);});
 
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
@@ -149,7 +149,7 @@ async function deploy_learning_job() {
   job.requires('aistensorflow/tfjs');
 
   // this is needed to use webGL
-  // job.requirements.environment.offscreenCanvas = true;
+  job.requirements.environment.offscreenCanvas = true;
 
   let results = await job.exec(compute.marketValue);
 

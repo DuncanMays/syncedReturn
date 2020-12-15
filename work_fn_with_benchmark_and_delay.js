@@ -3,7 +3,7 @@ const tf = require("@tensorflow/tfjs-node");
 async function workFn(slice_input, shared_input) {
   // imports the required modules
   tf = require('tfjs');
-  tf.setBackend('cpu');
+  tf.setBackend('webgl');
   await tf.ready();
   mnist = require('mnist.js');
 
@@ -66,7 +66,7 @@ async function workFn(slice_input, shared_input) {
   let labelsTensor;
 
   console.log('starting download of mnist');
-  if (rate < 0.5) {
+  if (rate < 50) {
     console.log('worker identified as weak, with rate:', rate);
 
     // delays worker for 5 seconds
