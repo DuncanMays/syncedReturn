@@ -38,7 +38,11 @@ y_train = tf.tensor(y_train);
 x_test = tf.tensor(x_test);
 y_test = tf.tensor(y_test);
 
-// training model on data, while keeping track of the number of the amount of time each batch took
+// sets training data to random noise, this is to test how much sparsity affects things
+// x_train = tf.randomNormal(x_train.shape);
+// y_train = tf.randomNormal(y_train.shape);
+
+// training model on data, while keeping track of the number of the amount of time each epoch took to give a samples per second calculation
 
 let epoch_start = 0;
 let epoch_end = 0;
@@ -47,14 +51,14 @@ let time_for_epoch, samples_per_second;
 epoch_start = new Date().getTime();
 
 model.fit(x_train, y_train, {
-  epochs: 50,
+  epochs: 10,
   batch_size: 32,
   callbacks: {
     onEpochEnd: (batch, logs) => {
       epoch_end = new Date().getTime();
 
       time_for_epoch = epoch_end - epoch_start;
-      samples_per_second = 1000*32/time_for_epoch;
+      samples_per_second = 1000*num_training/time_for_epoch;
       console.log('samples per second during epoch: '+samples_per_second);
 
       epoch_start = new Date().getTime();
