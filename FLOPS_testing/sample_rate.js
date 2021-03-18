@@ -1,6 +1,10 @@
 const tf = require("@tensorflow/tfjs-node");
 const mnist = require('mnist');
 
+function progress(input) {
+  console.log(input);
+}
+
 async function main() {
   // define a model
 
@@ -43,6 +47,9 @@ async function main() {
   // x_train = tf.randomNormal(x_train.shape);
   // y_train = tf.randomNormal(y_train.shape);
 
+  const data_load_progress = 0.2;
+  progress(data_load_progress);
+
   // training model on data, while keeping track of the number of the amount of time each epoch took to give a samples per second calculation
 
   let epoch_start = 0;
@@ -57,7 +64,7 @@ async function main() {
     epochs: num_epochs,
     batch_size: 32,
     callbacks: {
-      onEpochEnd: (batch, logs) => {
+      onEpochEnd: (epoch, logs) => {
         epoch_end = new Date().getTime();
 
         time_for_epoch = epoch_end - epoch_start;
@@ -67,6 +74,9 @@ async function main() {
         data.push(samples_per_second)
 
         epoch_start = new Date().getTime();
+
+        const prog = (1-data_load_progress)*epoch/num_epochs + data_load_progress;
+        progress(prog);
       }
     }
   });

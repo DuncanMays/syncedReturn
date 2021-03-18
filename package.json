@@ -11,6 +11,7 @@
   "dependencies": {
     "@tensorflow/tfjs-node": "^2.7.0",
     "dcp-client": "^3.2.2",
+    "fs": "0.0.1-security",
     "mnist": "^1.1.0"
   }
 }

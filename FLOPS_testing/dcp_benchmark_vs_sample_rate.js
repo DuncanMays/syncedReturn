@@ -75,7 +75,7 @@ async function workFn(input) {
   let epoch_start = 0;
   let epoch_end = 0;
   let time_for_epoch, samples_per_second;
-  const data = [];
+  const rate_data = [];
   const num_epochs = 50
 
   epoch_start = Date.now();
@@ -83,23 +83,25 @@ async function workFn(input) {
   await model.fit(imagesTensor, labelsTensor, {
     epochs: num_epochs,
     callbacks: {
-      onEpochEnd: (batch, logs) => {
+      onEpochEnd: (epoch, logs) => {
         epoch_end = Date.now();
 
         time_for_epoch = epoch_end - epoch_start;
         samples_per_second = 1000*imagesTensor.shape[0]/time_for_epoch;
-        console.log('samples per second during epoch: '+samples_per_second);
 
-        data.push(samples_per_second)
+        rate_data.push(samples_per_second)
 
         epoch_start = Date.now();
+
+        const prog = (1-data_load_progress)*epoch/num_epochs + data_load_progress;
+        progress(prog);
       }
     }
   });
 
   total = 0
-  for (let i=0; i<data.length; i++) {
-    total = total + data[i];
+  for (let i=0; i<rate_data.length; i++) {
+    total = total + rate_data[i];
   }
   sample_rate = total/num_epochs;
 
@@ -164,9 +166,13 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  const results = await deploy_job(5);
+  const results = await deploy_job(50);
 
-  console.log(results);
+  // console.log(results.values);
+
+  const fs = require('fs');
+
+  fs.writeFileSync('./results.data', results.values());
 
   process.exit();
 }
