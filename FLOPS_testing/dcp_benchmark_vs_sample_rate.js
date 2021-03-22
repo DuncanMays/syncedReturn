@@ -5,6 +5,10 @@
 // we're doing this because we want to understand the releationship between the benchmark and the sample rate of the model
 // this will help us determine how much data to download to each model, based on the benchmarking score
 
+function progress(input) {
+  console.log(input);
+}
+
 async function workFn(input) {
   // imports the required modules
   tf = require('tfjs');
@@ -113,6 +117,17 @@ async function workFn(input) {
   return return_obj;
 }
 
+function test_wrk_fn(input) {
+  progress(1);
+
+  const return_obj = {
+    sample_rate: 5,
+    benchmark_score: 25
+  };
+
+  return return_obj;
+}
+
 // this function deploys a job that executes workFn in workers
 async function deploy_job(num_slices) {
   let return_objs = [];
@@ -127,6 +142,7 @@ async function deploy_job(num_slices) {
   
   // I have no idea why the last parameter, shared input, needs to be in an array, all I know is that this works
   let job = compute.for(slices, workFn);
+  // let job = compute.for(slices, test_wrk_fn);
 
   job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
 
@@ -156,9 +172,21 @@ async function deploy_job(num_slices) {
   // this is needed to use webGL
   job.requirements.environment.offscreenCanvas = true;
 
-  let results = await job.exec(compute.marketValue);
+  let results = await job.exec(0.002);
+  // let results = await job.localExec();
+
 
   return results;
+}
+
+function deploy_fake_job(num_slices) {
+  const result_array = [];
+  for (let i=0; i<num_slices; i++) {
+    result_array.push(test_wrk_fn(1));
+  }
+  const result_obj = {};
+  result_obj.values = () => {return result_array}
+  return result_obj;
 }
 
 async function main() {
@@ -166,13 +194,14 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  const results = await deploy_job(50);
-
-  // console.log(results.values);
+  const results = await deploy_job(2);
+  // const results = await deploy_fake_job(2);
 
   const fs = require('fs');
 
-  fs.writeFileSync('./results.data', results.values());
+  const val_results = results.values();
+  
+  fs.writeFileSync('./results.data', JSON.stringify(val_results));
 
   process.exit();
 }
