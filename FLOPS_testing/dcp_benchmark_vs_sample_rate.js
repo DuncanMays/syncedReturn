@@ -5,6 +5,8 @@
 // we're doing this because we want to understand the releationship between the benchmark and the sample rate of the model
 // this will help us determine how much data to download to each model, based on the benchmarking score
 
+const all_results = []
+
 function progress(input) {
   console.log(input);
 }
@@ -130,7 +132,8 @@ function test_wrk_fn(input) {
 
 // this function deploys a job that executes workFn in workers
 async function deploy_job(num_slices) {
-  let return_objs = [];
+
+  console.log('deploying job');
 
   // each worker will be given an object that tells it when the job was deployed and how long since then to return
   let slices = [];
@@ -154,7 +157,7 @@ async function deploy_job(num_slices) {
 
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
-    return_objs.push(result.result);
+    all_results.push(result.result);
   });
 
   job.on('noProgress', (e) => {
@@ -189,19 +192,22 @@ function deploy_fake_job(num_slices) {
   return result_obj;
 }
 
+function save_results() {
+  console.log('saving results to results.data');
+  const fs = require('fs');
+  fs.writeFileSync('./results.data', JSON.stringify(all_results));
+  process.exit();
+}
+process.on('SIGINT', save_results);
+
 async function main() {
   // the compute api
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
   const results = await deploy_job(2);
-  // const results = await deploy_fake_job(2);
-
-  const fs = require('fs');
-
-  const val_results = results.values();
   
-  fs.writeFileSync('./results.data', JSON.stringify(val_results));
+  save_results();
 
   process.exit();
 }
