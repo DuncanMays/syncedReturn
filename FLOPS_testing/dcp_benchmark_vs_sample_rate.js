@@ -205,7 +205,7 @@ async function main() {
   await require('dcp-client').init(process.argv);
   compute = require('dcp/compute');
 
-  const results = await deploy_job(2);
+  const results = await deploy_job(50);
   
   save_results();
 
