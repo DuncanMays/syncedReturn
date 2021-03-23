@@ -3,14 +3,18 @@
 // it trains a model on MNIST and calculates the sample rate of the model, which is the number of samples per second the model is able to train on
 // it will then return these two figures to the client
 // we're doing this because we want to understand the releationship between the benchmark and the sample rate of the model
-// this will help us determine how much data to download to each model, based on the benchmarking score
+// this will help us determine how much data to download to worker for a model that we want to train for a certain amount of time, based on the benchmarking score
 
+// where the results returned from each slice will be stored
 const all_results = []
 
+// this function exists so that we can run the work function locally without crashing
+// progress is defined in worker, but not in node
 function progress(input) {
   console.log(input);
 }
 
+// this function will be sent to workers on DCP, it will download data, train a model on that data while recording the speed of training, and it will run a benchmark
 async function workFn(input) {
   // imports the required modules
   tf = require('tfjs');
@@ -84,33 +88,42 @@ async function workFn(input) {
   const rate_data = [];
   const num_epochs = 10
 
+  // records the start of training
   epoch_start = Date.now();
 
   await model.fit(imagesTensor, labelsTensor, {
     epochs: num_epochs,
     callbacks: {
       onEpochEnd: (epoch, logs) => {
+        // records the end of the epoch
         epoch_end = Date.now();
 
+        // calculates the average number of samples trained every second during the last epoch
+        // this is calculated from the number of samples in each epoch (imagesTensor.shape[0]) and the amount of time the epoch took
         time_for_epoch = epoch_end - epoch_start;
         samples_per_second = 1000*imagesTensor.shape[0]/time_for_epoch;
 
+        // pushes the training rate to a list
         rate_data.push(samples_per_second)
 
-        epoch_start = Date.now();
-
+        // reports progress to the scheduler
         const prog = (1-data_load_progress)*epoch/num_epochs + data_load_progress;
         progress(prog);
+
+        // this callback runs in between epochs, and so the end of this function is the start of the next epoch
+        epoch_start = Date.now();
       }
     }
   });
 
+  // we will now take the average of the samples_per_second of the epochs
   total = 0
   for (let i=0; i<rate_data.length; i++) {
     total = total + rate_data[i];
   }
   sample_rate = total/num_epochs;
 
+  // runs a benchmark and return the anverage sample rate with the benchmarking score
   const return_obj = {
     sample_rate: sample_rate,
     benchmark_score: benchmark()
@@ -119,6 +132,7 @@ async function workFn(input) {
   return return_obj;
 }
 
+// this function exists solely to test the results saving mechanism, writing to files in node is not something I've got a lot of experience with, and so I made this function to play around
 function test_wrk_fn(input) {
   progress(1);
 
@@ -147,19 +161,19 @@ async function deploy_job(num_slices) {
   let job = compute.for(slices, workFn);
   // let job = compute.for(slices, test_wrk_fn);
 
-  job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
-
+  // adds listenners to log status updates, errors, and console logs from worker
+  job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler!");});
   job.on('status', (status) => {console.log("Got a status update: ", status);});
-
   job.on('error', (err) => {console.log('there was an error: ', err);});
-
   job.on('console', (msg) => {console.log("worker "+msg.sliceIndex+" logged: "+msg.message);});
 
+  // if a worker returns a result, push it to the list all_results so we can record it at the end of the program
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
     all_results.push(result.result);
   });
 
+  // if a worker dies from no progress, we need to know the last reported progress value so we know where the error was in the work fn
   job.on('noProgress', (e) => {
     console.log('noProgress');
     console.log(e.progressReports.last.value);
@@ -182,6 +196,8 @@ async function deploy_job(num_slices) {
   return results;
 }
 
+// this function exists for the purpose of reporting fake results to test the recording system
+// that way we can test the file writing systems without having to wait for DCP
 function deploy_fake_job(num_slices) {
   const result_array = [];
   for (let i=0; i<num_slices; i++) {
@@ -192,10 +208,11 @@ function deploy_fake_job(num_slices) {
   return result_obj;
 }
 
+// saves results to a file
 function save_results() {
-  console.log('saving results to results.data');
+  console.log('saving results to head.data');
   const fs = require('fs');
-  fs.writeFileSync('./results.data', JSON.stringify(all_results));
+  fs.writeFileSync('./head.data', JSON.stringify(all_results));
   process.exit();
 }
 process.on('SIGINT', save_results);
