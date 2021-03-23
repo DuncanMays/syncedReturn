@@ -14,7 +14,7 @@ function progress(input) {
 async function workFn(input) {
   // imports the required modules
   tf = require('tfjs');
-  tf.setBackend('cpu');
+  tf.setBackend('webgl');
   await tf.ready();
   mnist = require('mnist.js');
 
