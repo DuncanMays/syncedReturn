@@ -5,7 +5,7 @@ f = open('./commit.data', 'r')
 raw = f.read()
 f.close()
 
-data = json.loads(raw)
+data = json.loads(raw)['data']
 
 x = [s['benchmark_score'] for s in data]
 y = [s['sample_rate'] for s in data]
