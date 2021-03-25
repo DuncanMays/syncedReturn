@@ -86,7 +86,7 @@ async function workFn(input) {
   let epoch_end = 0;
   let time_for_epoch, samples_per_second;
   const rate_data = [];
-  const num_epochs = 10
+  const num_epochs = 30
 
   // records the start of training
   epoch_start = Date.now();

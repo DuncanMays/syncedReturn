@@ -13,9 +13,13 @@ f = open('./head.data', 'r')
 head = json.loads(f.read())
 f.close()
 
-f = open('./commit.data', 'r')
-commit = json.loads(f.read())
-f.close()
+commit = None
+try:
+	f = open('./commit.data', 'r')
+	commit = json.loads(f.read())
+	f.close()
+except(FileNotFoundError):
+	commit = {'hash':0, 'data':[]}
 
 head_hash = hash_data(head)
 last_commit_hash = commit['hash']
