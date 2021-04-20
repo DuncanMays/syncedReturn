@@ -3,8 +3,8 @@ const process = require('process');
 const mnist = require('mnist');
 
 const test = require('./test_suite.js');
-// const workFn = require('./work_fn.js').work;
-const workFn = require('./work_fn_with_benchmark_and_delay.js').work;
+const workFn = require('./work_fn.js').work;
+// const workFn = require('./work_fn_with_benchmark_and_delay.js').work;
 
 const central_model = make_model();
 
@@ -18,9 +18,12 @@ const testing_input = tf.tensor(testing_data.map(x => x.input));
 const testing_output = tf.tensor(testing_data.map(x => x.output));
 
 // stop training after this number of milliseconds
-const run_time = 1000*60;
+const run_time = 5*60*1000;
 const num_workers_per_job = 5;
 let compute;
+
+// the results from all workers will be pooled here, needs to be global
+const return_objs = [];
 
 // this function defines a new instantiation of the model we want to train
 function make_model() {
@@ -50,6 +53,11 @@ function demarshall_parameters(param_array) {
 
 // aggregates parameters returned from worker
 function aggregate(parameter_array) {
+  console.log('aggregating');
+  console.log(parameter_array);
+
+  parameter_array = parameter_array.filter((p) => {return p.params})
+
   // splitting the input into the parameter sets and the weights for each parameter set
   let params = parameter_array.map(x => demarshall_parameters(x.params));
   let weights = parameter_array.map(x => x.completed_batches);
@@ -93,10 +101,8 @@ function get_param_performance(worker_params){
   return performance.map(x => x.arraySync());
 }
 
-// this function deploys a job that executes workFn in workers
-async function deploy_learning_job() {
-  const deploy_time = Date.now();
-  let return_objs = [];
+// this function deploys a job that executes workFn in workers, and returns a promise which is a job object
+function deploy_learning_job() {
 
   // each worker will be given an object that tells it when the job was deployed and how long since then to return
   let slices = [];
@@ -110,7 +116,7 @@ async function deploy_learning_job() {
   }
 
   let shared_input = {
-    deploy_time: deploy_time,
+    deploy_time: Date.now(),
     run_time: run_time,
     params: central_parameters
   };
@@ -128,6 +134,7 @@ async function deploy_learning_job() {
 
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
+    console.log(result);
     return_objs.push(result.result);
 
     // this block of code tests the performance of the returned parameter set
@@ -151,9 +158,15 @@ async function deploy_learning_job() {
   // this is needed to use webGL
   job.requirements.environment.offscreenCanvas = true;
 
-  let results = await job.exec(compute.marketValue);
+  return job.exec(compute.marketValue);
+}
 
-  return results;
+function wait(time) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, time);
+  })
 }
 
 async function main() {
@@ -164,12 +177,15 @@ async function main() {
   let performance = central_model.evaluate(testing_input, testing_output);
   console.log("here is the model's loss and accuracy on testing data:", performance.map(x => x.arraySync()));
 
-  const worker_params = await deploy_learning_job();
+  const job_promise = deploy_learning_job();
+
+  // wait ten seconds after the workers are supposed to return to move on from this line
+  await Promise.race([job_promise, wait(run_time + 10000)])
 
   // I wrote a function to return fake results so we don't have to wait for DCP every time we test aggregation
   // const worker_params = test.fake_results(5);
 
-  const new_params = aggregate(worker_params)
+  const new_params = aggregate(return_objs)
 
   central_model.setWeights(new_params);
 

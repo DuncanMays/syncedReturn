@@ -1,11 +1,6 @@
 const tf = require("@tensorflow/tfjs-node");
 
 async function workFn(slice_input, shared_input) {
-  // imports the required modules
-  tf = require('tfjs');
-  tf.setBackend('cpu');
-  await tf.ready();
-  mnist = require('mnist.js');
 
   // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
   function marshal_parameters(param_tensor) {
@@ -40,60 +35,80 @@ async function workFn(slice_input, shared_input) {
   // the time that this worker will stop trianing and return to client
   const stop_time = shared_input.deploy_time + shared_input.run_time;
 
-  // we now define our model
-  const model = tf.sequential();
+  // if stop time is less than 5 seconds in the future, then quit
+  if (stop_time - Date.now() <= 5000){
+    console.log('worker quit due to lack of time');
 
-  model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-  model.add(tf.layers.dense({units: 20, activation: 'relu'}))
-  model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
+    const return_obj = {
+      completed_batches: 0,
+      params: null
+    };
 
-  model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
+    return return_obj;
 
-  // we now set the weights of our model
-  let params = demarshall_parameters(shared_input.params);
-  model.setWeights(params);
+  } else{
 
-  await console.log('starting download of mnist');
+    // imports the required modules
+    tf = require('tfjs');
+    tf.setBackend('cpu');
+    await tf.ready();
+    mnist = require('mnist.js');
+    
+    // we now define our model
+    const model = tf.sequential();
 
-  // downloads MNIST shard 1 out of 12
-  let data = await mnist.load(Math.round(12*Math.random()));
-  await progress(0.15);
+    model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
+    model.add(tf.layers.dense({units: 20, activation: 'relu'}))
+    model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
-  // preprocesses data
-  let imagesTensor = await tf.tensor2d(data.images, [Math.floor(data.images.length / 784), 784]);
-  let labelsTensor = await tf.tensor2d(data.labels, [Math.floor(data.labels.length / 10), 10]);
+    model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
 
-  const data_load_progress = 0.2;
-  await progress(data_load_progress);
+    // we now set the weights of our model
+    let params = demarshall_parameters(shared_input.params);
+    model.setWeights(params);
 
-  await console.log('starting training');
+    await console.log('starting download of mnist');
 
-  let completedBatches = 0;
-  await model.fit(imagesTensor, labelsTensor, {
-    yieldEvery: 5000,
-    epochs: 100,
-    callbacks: {
-      onBatchEnd: (batch, logs) => {
-          completedBatches = completedBatches + 1;
-      },
-      onYield: (epoch, batch, logs) => {
-        if (Date.now() > stop_time) {
-          // stops training if the time limit is exceeded
-          console.log('training time exceeded');
-          model.stopTraining = true;
-        } else {
-          progress((0.95 - data_load_progress)*((Date.now() - shared_input.deploy_time)/shared_input.run_time) + data_load_progress);
+    // downloads MNIST shard 1 out of 12
+    let data = await mnist.load(Math.round(12*Math.random()));
+    await progress(0.15);
+
+    // preprocesses data
+    let imagesTensor = await tf.tensor2d(data.images, [Math.floor(data.images.length / 784), 784]);
+    let labelsTensor = await tf.tensor2d(data.labels, [Math.floor(data.labels.length / 10), 10]);
+
+    const data_load_progress = 0.2;
+    await progress(data_load_progress);
+
+    await console.log('starting training');
+
+    let completedBatches = 0;
+    await model.fit(imagesTensor, labelsTensor, {
+      yieldEvery: 5000,
+      epochs: 100,
+      callbacks: {
+        onBatchEnd: (batch, logs) => {
+            completedBatches = completedBatches + 1;
+        },
+        onYield: (epoch, batch, logs) => {
+          if (Date.now() > stop_time) {
+            // stops training if the time limit is exceeded
+            console.log('training time exceeded');
+            model.stopTraining = true;
+          } else {
+            progress((0.95 - data_load_progress)*((Date.now() - shared_input.deploy_time)/shared_input.run_time) + data_load_progress);
+          }
         }
       }
-    }
-  });
+    });
 
-  const return_obj = {
-    completed_batches: completedBatches,
-    params: marshal_parameters(model.getWeights())
-  };
+    const return_obj = {
+      completed_batches: completedBatches,
+      params: marshal_parameters(model.getWeights())
+    };
 
-  return return_obj;
+    return return_obj;
+  }
 }
 
 module.exports = {work: workFn}
