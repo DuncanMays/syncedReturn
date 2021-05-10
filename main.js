@@ -1,10 +1,15 @@
-const tf = require("@tensorflow/tfjs-node");
+const tf = require("@tensorflow/tfjs");
 const process = require('process');
 const mnist = require('mnist');
 
 const test = require('./test_suite.js');
-const workFn = require('./work_fn.js').work;
+// const workFn = require('./work_fn.js').work;
 // const workFn = require('./work_fn_with_benchmark_and_delay.js').work;
+
+const workFn = (a, b) => {
+  progress(1);
+  return'success';
+}
 
 const central_model = make_model();
 
@@ -151,12 +156,12 @@ function deploy_learning_job() {
   // aistensorflow/tfjs gives us tfjs
   // colab-data/mnist gives us MNIST, libpng/libpng is a dependancy of this
   // dcp-polyfills/polyfills is just generally a good thing to have, it polyfills a lot of JS things that aren't normally offered in worker
-  job.requires('tlr-mnist-shard/mnist.js');
+  // job.requires('tlr-mnist-shard/mnist.js');
   // job.requires('dcp-polyfills/polyfills');
-  job.requires('aistensorflow/tfjs');
+  // job.requires('aistensorflow/tfjs');
 
   // this is needed to use webGL
-  job.requirements.environment.offscreenCanvas = true;
+  // job.requirements.environment.offscreenCanvas = true;
 
   return job.exec(compute.marketValue);
 }
@@ -180,8 +185,8 @@ async function main() {
   const job_promise = deploy_learning_job();
 
   // wait ten seconds after the workers are supposed to return to move on from this line
-  await Promise.race([job_promise, wait(run_time + 10000)])
-
+  // await Promise.race([job_promise, wait(run_time + 10000)])
+  await job_promise;
   // I wrote a function to return fake results so we don't have to wait for DCP every time we test aggregation
   // const worker_params = test.fake_results(5);
 
