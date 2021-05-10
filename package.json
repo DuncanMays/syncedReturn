@@ -1,0 +1,26 @@
+{
+  "name": "syncedreturn",
+  "version": "1.0.0",
+  "description": "A federated learning algorithm, running on DCP, where all the workers return at the same time, regardless of how much they've trained.",
+  "main": "main.js",
+  "dependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.4",
+    "@tensorflow/tfjs": "^3.6.0",
+    "dcp-client": "^4.0.4-b",
+    "mnist": "^1.1.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/DuncanMays/syncedReturn.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DuncanMays/syncedReturn/issues"
+  },
+  "homepage": "https://github.com/DuncanMays/syncedReturn#readme"
+}
