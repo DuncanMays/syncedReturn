@@ -2,6 +2,8 @@ const tf = require("@tensorflow/tfjs");
 
 async function workFn(slice_input, shared_input) {
 
+  console.log('started');
+
   // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
   function marshal_parameters(param_tensor) {
     let params = param_tensor.map(x => x.arraySync());
@@ -50,8 +52,10 @@ async function workFn(slice_input, shared_input) {
 
     // imports the required modules
     tf = require('tfjs');
+    console.log(tf.version);
     tf.setBackend('cpu');
     await tf.ready();
+    
     mnist = require('mnist.js');
     
     // we now define our model
@@ -109,6 +113,8 @@ async function workFn(slice_input, shared_input) {
 
     return return_obj;
   }
+  progress(1);
+  return'success';
 }
 
 module.exports = {work: workFn}

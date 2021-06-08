@@ -3,13 +3,13 @@ const process = require('process');
 const mnist = require('mnist');
 
 const test = require('./test_suite.js');
-// const workFn = require('./work_fn.js').work;
+const workFn = require('./work_fn.js').work;
 // const workFn = require('./work_fn_with_benchmark_and_delay.js').work;
 
-const workFn = (a, b) => {
-  progress(1);
-  return'success';
-}
+// const workFn = (a, b) => {
+//   progress(1);
+//   return'success';
+// }
 
 const central_model = make_model();
 
@@ -24,7 +24,7 @@ const testing_output = tf.tensor(testing_data.map(x => x.output));
 
 // stop training after this number of milliseconds
 const run_time = 5*60*1000;
-const num_workers_per_job = 5;
+const num_workers_per_job = 50;
 let compute;
 
 // the results from all workers will be pooled here, needs to be global
@@ -140,12 +140,16 @@ function deploy_learning_job() {
   job.on('result', (result) => {
     console.log("Got a result from worker", result.sliceNumber);
     console.log(result);
-    return_objs.push(result.result);
+    // return_objs.push(result.result);
 
-    // this block of code tests the performance of the returned parameter set
-    const worker_params = demarshall_parameters(result.result.params);
-    const performance = get_param_performance(worker_params);
-    console.log('the parameters returned from worker had a loss and accuracy of', performance);
+    // // this block of code tests the performance of the returned parameter set
+    // const worker_params = demarshall_parameters(result.result.params);
+    // const performance = get_param_performance(worker_params);
+    // console.log('the parameters returned from worker had a loss and accuracy of', performance);
+  });
+
+  job.on('deployJob', (thing) => {
+    console.log(thing);
   });
 
   job.on('noProgress', (e) => {
@@ -158,12 +162,15 @@ function deploy_learning_job() {
   // dcp-polyfills/polyfills is just generally a good thing to have, it polyfills a lot of JS things that aren't normally offered in worker
   // job.requires('tlr-mnist-shard/mnist.js');
   // job.requires('dcp-polyfills/polyfills');
-  // job.requires('aistensorflow/tfjs');
+  job.requires('aistensorflow/tfjs');
+
+  job.public.name = {name: 'ML task'};
 
   // this is needed to use webGL
   // job.requirements.environment.offscreenCanvas = true;
 
-  return job.exec(compute.marketValue);
+  // return job.exec(compute.marketValue);
+  return job.exec(0.01);
 }
 
 function wait(time) {
@@ -177,6 +184,8 @@ function wait(time) {
 async function main() {
   // the compute api
   await require('dcp-client').init(process.argv);
+  // await require('dcp-client').init('v3_config.js');
+  // await require('dcp-client').init('https://scheduler-v3.distributed.computer/etc/etc/dcp-config.js')
   compute = require('dcp/compute');
 
   let performance = central_model.evaluate(testing_input, testing_output);
@@ -187,6 +196,7 @@ async function main() {
   // wait ten seconds after the workers are supposed to return to move on from this line
   // await Promise.race([job_promise, wait(run_time + 10000)])
   await job_promise;
+
   // I wrote a function to return fake results so we don't have to wait for DCP every time we test aggregation
   // const worker_params = test.fake_results(5);
 
