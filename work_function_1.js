@@ -38,10 +38,15 @@ function demarshall_parameters(param_array) {
 async function workFn(slice_input, shared_input) {
 
   // imports the required modules
-  // tf = require('tfjs');
-  // log(tf.version);
-  // tf.setBackend('cpu');
-  // await tf.ready();
+  tf = require('tfjs');
+  tf.setBackend('cpu');
+  await tf.ready();
+
+  log(tf.version);
+
+  const { lazy_load } = require('lazy_loader');
+  const lz = require('lzstring');
+
 
   // the progress after we've loaded the data
   const DATA_LOAD_PROGRESS = 0.1;
@@ -192,10 +197,13 @@ async function workFn(slice_input, shared_input) {
     let index = shard_indices[k];
 
     // in worker this will be a call to require, here we just load the data out of files I've got on disk
-    let raw = JSON.parse(fs.readFileSync('/home/duncan/Documents/DCL/sharding_mnist/shards500/train_shard_'+index).toString());
+    // let raw = JSON.parse(fs.readFileSync('/home/duncan/Documents/DCL/sharding_mnist/shards500/train_shard_'+index).toString());
 
-    // ***********************************************************************
-    // this is where the code to load mnist goes, very important should probably figure this out
+    // downloads and decompresses data
+    await lazy_load(['train_shard_1']);
+    mnist_shard = require('train_shard_1');
+
+    raw = JSON.parse(lz.decompressFromBase64(mnist_shard));
 
     x_data_raw = x_data_raw.concat(raw.images);
     y_data_raw = y_data_raw.concat(raw.labels);
@@ -246,28 +254,30 @@ async function workFn(slice_input, shared_input) {
 
   progress(TRAIN_PROGRESS)
 
-  const return_obj = {
-    completed_batches: completedBatches,
-    params: marshal_parameters(model.getWeights())
-  };
+  // const return_obj = {
+  //   completed_batches: completedBatches,
+  //   params: marshal_parameters(model.getWeights())
+  // };
 
-  return return_obj;
+  // return return_obj;
+
+  return'success';
 }
 
-async function main() {
-  const central_model = get_model();
-  const central_params = marshal_parameters(central_model.getWeights());
+// async function main() {
+//   const central_model = get_model();
+//   const central_params = marshal_parameters(central_model.getWeights());
 
-  // for testing purposes, we execute the work function here
-  console.log(await workFn(undefined, {
-    benchmark_length:100,
-    deploy_time: Date.now(),
-    time_for_training: 60000,
-    show_logs: true,
-    params: central_params
-  }));
-}
+//   // for testing purposes, we execute the work function here
+//   console.log(await workFn(undefined, {
+//     benchmark_length:100,
+//     deploy_time: Date.now(),
+//     time_for_training: 60000,
+//     show_logs: true,
+//     params: central_params
+//   }));
+// }
 
-main();
+// main();
 
 module.exports = workFn
