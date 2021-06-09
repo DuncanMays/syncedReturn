@@ -265,20 +265,4 @@ async function workFn(shared_input) {
   return return_obj;
 }
 
-// async function main() {
-//   const central_model = get_model();
-//   const central_params = marshal_parameters(central_model.getWeights());
-
-//   // for testing purposes, we execute the work function here
-//   console.log(await workFn(undefined, {
-//     benchmark_length:100,
-//     deploy_time: Date.now(),
-//     time_for_training: 60000,
-//     show_logs: true,
-//     params: central_params
-//   }));
-// }
-
-// main();
-
 module.exports = workFn
