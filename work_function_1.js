@@ -199,8 +199,8 @@ async function workFn(shared_input) {
     // let raw = JSON.parse(fs.readFileSync('/home/duncan/Documents/DCL/sharding_mnist/shards500/train_shard_'+index).toString());
 
     // downloads and decompresses data
-    await lazy_load(['train_shard_1']);
-    mnist_shard = require('train_shard_1');
+    await lazy_load(['train_shard_'+index]);
+    mnist_shard = require('train_shard_'+index);
 
     raw = JSON.parse(lz.decompressFromBase64(mnist_shard));
 

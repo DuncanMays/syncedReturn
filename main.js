@@ -42,7 +42,6 @@ function get_model() {
 // aggregates parameters returned from worker
 function aggregate(parameter_array) {
   console.log('aggregating');
-  console.log(parameter_array);
 
   parameter_array = parameter_array.filter((p) => {return p.params})
 
@@ -95,11 +94,11 @@ const central_params = marshal_parameters(central_model.getWeights());
 let performance = central_model.evaluate(testing_input, testing_output);
 console.log("here is the model's loss and accuracy on testing data on initialization:", performance.map(x => x.arraySync()));
 
-const NUM_SLICES = 3;
+const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:100,
   deploy_time: Date.now(),
-  time_for_training: 60000,
+  time_for_training: 8*60000,
   show_logs: false,
   params: central_params
 }
@@ -107,6 +106,7 @@ const SHARED_INPUT = {
 const worker_params = [];
 
 async function main() {
+
   await require('dcp-client').init(process.argv);
   const compute = require('dcp/compute');
 
@@ -141,7 +141,8 @@ async function main() {
 }
 
 function finish() {
-  // console.log(worker_params)
+  console.log('wrapping up');
+
   trained_params = aggregate(worker_params);
 
   central_model.setWeights(trained_params);
@@ -149,8 +150,10 @@ function finish() {
   performance = central_model.evaluate(testing_input, testing_output);
   console.log("here is the model's loss and accuracy on testing data:", performance.map(x => x.arraySync()));
 
-  process.exit()
+  process.exit();
 }
-// process.on('SIGINT', finish());
+process.on('SIGINT', finish);
+
+setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
 
 main();
