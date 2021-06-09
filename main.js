@@ -39,7 +39,7 @@ const SHARED_INPUT = {
   benchmark_length:100,
   deploy_time: Date.now(),
   time_for_training: 60000,
-  show_logs: true,
+  show_logs: false,
   params: central_params
 }
 
@@ -50,20 +50,23 @@ async function main() {
   // creating slices
   slices = [];
   for (let i=0; i<NUM_SLICES; i++) {
-    slices.push(i);
+    slices.push(SHARED_INPUT);
   }
   
-  let job = compute.for(slices, SHARED_INPUT, wrk_fn);
+  let job = compute.for(slices, wrk_fn);
 
   job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
   job.on('status', (status) => {console.log("Got a status update:", status);});
   job.on('result', (value) => console.log("Got a result:", value.result));
   job.on('error', (err) => {console.log('there was an error: ', err);});
+  job.on('console', (msg) => {console.log("worker "+msg.sliceIndex+" logged: "+msg.message);});
 
   job.requires(data_requirements);
   job.requires('lzstring/lzstring');
   job.requires('lazy_loader/lazy_loader');
   job.requires('aistensorflow/tfjs');
+
+  job.public.name = 'Federated Learning';
   
   let results = await job.exec(0.01);
 

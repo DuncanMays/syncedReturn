@@ -35,18 +35,23 @@ function demarshall_parameters(param_array) {
 
 // ***************************************************************************************************************************
 
-async function workFn(slice_input, shared_input) {
+async function workFn(shared_input) {
 
   // imports the required modules
   tf = require('tfjs');
   tf.setBackend('cpu');
   await tf.ready();
 
+  function log(payload) {
+    if (shared_input.show_logs) {
+      console.log(payload);
+    }
+  }
+
   log(tf.version);
 
   const { lazy_load } = require('lazy_loader');
   const lz = require('lzstring');
-
 
   // the progress after we've loaded the data
   const DATA_LOAD_PROGRESS = 0.1;
@@ -63,12 +68,6 @@ async function workFn(slice_input, shared_input) {
   function demarshall_parameters(param_array) {
     let params = param_array.map(x => tf.tensor(x));
     return params;
-  }
-
-  function log(payload) {
-    if (shared_input.show_logs) {
-      console.log(payload);
-    }
   }
 
   // returns the MNIST model that we will train here
@@ -254,14 +253,16 @@ async function workFn(slice_input, shared_input) {
 
   progress(TRAIN_PROGRESS)
 
-  // const return_obj = {
-  //   completed_batches: completedBatches,
-  //   params: marshal_parameters(model.getWeights())
-  // };
+  const return_obj = {
+    completed_batches: completedBatches,
+    params: marshal_parameters(model.getWeights())
+  };
 
-  // return return_obj;
+  return return_obj;
 
-  return'success';
+  progress(1);
+
+  return return_obj;
 }
 
 // async function main() {
