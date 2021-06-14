@@ -254,11 +254,10 @@ async function workFn(shared_input) {
   progress(TRAIN_PROGRESS)
 
   const return_obj = {
+    num_shards: num_data_shards,
     completed_batches: completedBatches,
     params: marshal_parameters(model.getWeights())
   };
-
-  return return_obj;
 
   progress(1);
 

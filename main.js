@@ -1,7 +1,7 @@
 
-// wrk_fn = require('./work_function_1.js');
+wrk_fn = require('./work_function_1.js');
 // wrk_fn = require('./work_function_2.js');
-wrk_fn = require('./work_function_3.js');
+// wrk_fn = require('./work_function_3.js');
 
 const data_requirements = require('./data_requirements.js');
 
