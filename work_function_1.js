@@ -164,7 +164,7 @@ async function workFn(shared_input) {
   const num_samples_to_download = Math.min(sample_rate*remaining_time, 60000);
 
   // since MNIST is sharded into bundles of 500 data points, the number of shards to download is the number of samples to download divided by 500
-  num_data_shards = Math.round(num_samples_to_download/500);
+  let num_data_shards = Math.round(num_samples_to_download/500);
 
   log('number of data shards to download: ' + num_data_shards.toString());
 

@@ -49,6 +49,7 @@ function aggregate(parameter_array) {
   parameter_array = parameter_array.filter((p) => {return p.params})
 
   // splitting the input into the parameter sets and the weights for each parameter set
+  console.log(parameter_array);
   let params = parameter_array.map(x => demarshall_parameters(x.params));
   let weights = parameter_array.map(x => x.completed_batches);
 
@@ -101,12 +102,14 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:100,
   deploy_time: Date.now(),
-  time_for_training: 3*60000,
+  time_for_training: 60000,
   show_logs: false,
   params: central_params
 }
 
 const worker_params = [];
+let total_completed_batches = 0;
+let total_shards_downloaded = 0;
 
 async function main() {
 
@@ -129,6 +132,8 @@ async function main() {
   job.on('result', (value) => {
     console.log("Got a result from worker", value.sliceNumber);
     worker_params.push(value.result);
+    total_completed_batches = total_completed_batches + value.result.completed_batches;
+    total_shards_downloaded = total_shards_downloaded + value.result.num_shards;
   });
 
   job.requires(data_requirements);
@@ -140,24 +145,34 @@ async function main() {
   
   let results = await job.exec(0.01);
 
+  console.log(results.length);
+
   finish();
 }
 
 function finish() {
   console.log('wrapping up');
 
+  console.log(worker_params.length);
+
   trained_params = aggregate(worker_params);
 
   central_model.setWeights(trained_params);
 
   performance = central_model.evaluate(testing_input, testing_output);
-  console.log("here is the model's loss and accuracy on testing data:", performance.map(x => x.arraySync()));
+
+  [loss, accuracy] = performance.map(x => x.arraySync());
+  
+  console.log("testing loss:", loss);
+  console.log("testing accuracy:", accuracy);
+  console.log("total completed batches:", total_completed_batches);
+  console.log("total shards downloaded:", total_shards_downloaded);
 
   process.exit();
 }
 process.on('SIGINT', finish);
 
 // stops the program if it runs for longer that 1.5 time the training time
-setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
+// setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
 
 main();
