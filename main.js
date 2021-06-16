@@ -1,6 +1,6 @@
 
-wrk_fn = require('./work_function_1.js');
-// wrk_fn = require('./work_function_2.js');
+// wrk_fn = require('./work_function_1.js');
+wrk_fn = require('./work_function_2.js');
 // wrk_fn = require('./work_function_3.js');
 
 const data_requirements = require('./data_requirements.js');
@@ -37,7 +37,7 @@ function get_model() {
   model.add(tf.layers.dense({units: 20, activation: 'relu'}))
   model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
-  model.compile({loss: tf.losses.meanSquaredError, metrics:['MSE', 'accuracy'], optimizer: tf.train.adam()});
+  model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:['accuracy'], optimizer: tf.train.adam()});
 
   return model;
 }
@@ -45,11 +45,11 @@ function get_model() {
 // aggregates parameters returned from worker
 function aggregate(parameter_array) {
   console.log('aggregating');
+  console.log(parameter_array);
 
   parameter_array = parameter_array.filter((p) => {return p.params})
 
   // splitting the input into the parameter sets and the weights for each parameter set
-  console.log(parameter_array);
   let params = parameter_array.map(x => demarshall_parameters(x.params));
   let weights = parameter_array.map(x => x.completed_batches);
 
@@ -102,8 +102,8 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:100,
   deploy_time: Date.now(),
-  time_for_training: 60000,
-  show_logs: false,
+  time_for_training: 300000,
+  show_logs: true,
   params: central_params
 }
 
@@ -132,8 +132,12 @@ async function main() {
   job.on('result', (value) => {
     console.log("Got a result from worker", value.sliceNumber);
     worker_params.push(value.result);
-    total_completed_batches = total_completed_batches + value.result.completed_batches;
-    total_shards_downloaded = total_shards_downloaded + value.result.num_shards;
+
+    // workers will return 'null' if they can't train for some reason - time constraints, low benchmarking score, etc.
+    if (value.result != 'null') {
+      total_completed_batches = total_completed_batches + value.result.completed_batches;
+      total_shards_downloaded = total_shards_downloaded + value.result.num_shards;
+    }
   });
 
   job.requires(data_requirements);
@@ -173,6 +177,6 @@ function finish() {
 process.on('SIGINT', finish);
 
 // stops the program if it runs for longer that 1.5 time the training time
-// setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
+setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
 
 main();

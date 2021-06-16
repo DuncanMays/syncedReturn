@@ -28,7 +28,7 @@ function demarshall_parameters(param_array) {
     model.add(tf.layers.dense({units: 20, activation: 'relu'}))
     model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
-    model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
+    model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:[], optimizer: tf.train.adam()});
 
     return model;
   }
@@ -78,7 +78,7 @@ async function workFn(shared_input) {
     model.add(tf.layers.dense({units: 20, activation: 'relu'}))
     model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
-    model.compile({loss: tf.losses.meanSquaredError, metrics:[], optimizer: tf.train.adam()});
+    model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:[], optimizer: tf.train.adam()});
 
     return model;
   }
@@ -210,7 +210,9 @@ async function workFn(shared_input) {
     params: marshal_parameters(model.getWeights())
   };
 
-  return return_obj;
+  tf.dispose(model);
+  tf.dispose(imagesTensor);
+  tf.dispose(labelsTensor);
 
   progress(1);
 
