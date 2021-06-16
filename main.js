@@ -1,7 +1,7 @@
 
 // wrk_fn = require('./work_function_1.js');
-wrk_fn = require('./work_function_2.js');
-// wrk_fn = require('./work_function_3.js');
+// wrk_fn = require('./work_function_2.js');
+wrk_fn = require('./work_function_3.js');
 
 const data_requirements = require('./data_requirements.js');
 
@@ -102,7 +102,7 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:100,
   deploy_time: Date.now(),
-  time_for_training: 300000,
+  time_for_training: 105000,
   show_logs: true,
   params: central_params
 }
