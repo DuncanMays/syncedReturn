@@ -1,7 +1,9 @@
 
-// wrk_fn = require('./work_function_1.js');
-// wrk_fn = require('./work_function_2.js');
-wrk_fn = require('./work_function_3.js');
+// wrk_fn_str = './work_function_1.js';
+// wrk_fn_str = './work_function_2.js';
+wrk_fn_str = './work_function_3.js';
+
+wrk_fn = require(wrk_fn_str);
 
 const data_requirements = require('./data_requirements.js');
 
@@ -167,6 +169,9 @@ function finish() {
 
   [loss, accuracy] = performance.map(x => x.arraySync());
   
+  console.log('work function: ', wrk_fn_str);
+  console.log('training time: ', SHARED_INPUT.time_for_training)
+
   console.log("testing loss:", loss);
   console.log("testing accuracy:", accuracy);
   console.log("total completed batches:", total_completed_batches);
