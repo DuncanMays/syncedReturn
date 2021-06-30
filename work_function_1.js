@@ -11,11 +11,12 @@ function progress(i) {
 // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
   let params = param_tensor.map(x => x.arraySync());
-  return params;
+  return lz.compressToBase64(JSON.stringify(params));
 }
 
 // turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
 function demarshall_parameters(param_array) {
+  param_array = JSON.parse(lz.decompressFromBase64(param_array));
   let params = param_array.map(x => tf.tensor(x));
   return params;
 }
@@ -35,7 +36,7 @@ function demarshall_parameters(param_array) {
 
 // ***************************************************************************************************************************
 
-async function workFn(shared_input) {
+async function workFn(slice_input, shared_input) {
 
   // imports the required modules
   tf = require('tfjs');
@@ -48,7 +49,7 @@ async function workFn(shared_input) {
     }
   }
 
-  log(tf.version);
+  log(JSON.stringify(tf.version));
 
   const { lazy_load } = require('lazy_loader');
   const lz = require('lzstring');
@@ -61,11 +62,12 @@ async function workFn(shared_input) {
   // turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
   function marshal_parameters(param_tensor) {
     let params = param_tensor.map(x => x.arraySync());
-    return params;
+    return lz.compressToBase64(JSON.stringify(params));
   }
 
   // turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
   function demarshall_parameters(param_array) {
+    param_array = JSON.parse(lz.decompressFromBase64(param_array));
     let params = param_array.map(x => tf.tensor(x));
     return params;
   }

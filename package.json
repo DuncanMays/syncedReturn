@@ -6,8 +6,8 @@
   "dependencies": {
     "@mapbox/node-pre-gyp": "^1.0.4",
     "@tensorflow/tfjs": "^3.6.0",
-    "dcp-client": "^3.2.7",
-    "dcp-util": "^2.0.2",
+    "dcp-client": "^4.0.11",
+    "dcp-worker": "^3.0.6",
     "marked": "^1.0.0",
     "mnist": "^1.1.0"
   },

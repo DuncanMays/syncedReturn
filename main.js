@@ -1,9 +1,10 @@
 
-// wrk_fn_str = './work_function_1.js';
+wrk_fn_str = './work_function_1.js';
 // wrk_fn_str = './work_function_2.js';
-wrk_fn_str = './work_function_3.js';
+// wrk_fn_str = './work_function_3.js';
 
 wrk_fn = require(wrk_fn_str);
+const lz = require('./lint/lz_string.js');
 
 const data_requirements = require('./data_requirements.js');
 
@@ -19,14 +20,15 @@ const testing_data = mnist.set(0, 10000).test;
 const testing_input = tf.tensor(testing_data.map(x => x.input));
 const testing_output = tf.tensor(testing_data.map(x => x.output));
 
-// turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
+/// turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
   let params = param_tensor.map(x => x.arraySync());
-  return params;
+  return lz.compressToBase64(JSON.stringify(params));
 }
 
 // turns the JSON serializable array of arrays into an array of tensors that can be passed to model.setWeights
 function demarshall_parameters(param_array) {
+  param_array = JSON.parse(lz.decompressFromBase64(param_array));
   let params = param_array.map(x => tf.tensor(x));
   return params;
 }
@@ -47,7 +49,6 @@ function get_model() {
 // aggregates parameters returned from worker
 function aggregate(parameter_array) {
   console.log('aggregating');
-  console.log(parameter_array);
 
   parameter_array = parameter_array.filter((p) => {return p.params})
 
@@ -102,9 +103,9 @@ console.log("here is the model's loss and accuracy on testing data on initializa
 
 const NUM_SLICES = 5;
 const SHARED_INPUT = {
-  benchmark_length:100,
+  benchmark_length:1000,
   deploy_time: Date.now(),
-  time_for_training: 105000,
+  time_for_training: 1000*300,
   show_logs: true,
   params: central_params
 }
@@ -121,10 +122,10 @@ async function main() {
   // creating slices
   slices = [];
   for (let i=0; i<NUM_SLICES; i++) {
-    slices.push(SHARED_INPUT);
+    slices.push(i);
   }
   
-  let job = compute.for(slices, wrk_fn);
+  let job = compute.for(slices, wrk_fn, [SHARED_INPUT]);
 
   job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
   job.on('status', (status) => {console.log("Got a status update:", status);});
@@ -135,7 +136,7 @@ async function main() {
     console.log("Got a result from worker", value.sliceNumber);
     worker_params.push(value.result);
 
-    // workers will return 'null' if they can't train for some reason - time constraints, low benchmarking score, etc.
+    // workers will return 'null' if they can't train for some reason - this could be due to time constraints, low benchmarking score, etc.
     if (value.result != 'null') {
       total_completed_batches = total_completed_batches + value.result.completed_batches;
       total_shards_downloaded = total_shards_downloaded + value.result.num_shards;
@@ -146,8 +147,6 @@ async function main() {
   job.requires('lzstring/lzstring');
   job.requires('lazy_loader/lazy_loader');
   job.requires('aistensorflow/tfjs');
-
-  job.public.name = 'Federated Learning';
   
   let results = await job.exec(0.01);
 
