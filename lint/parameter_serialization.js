@@ -1,7 +1,7 @@
 const tf = require('@tensorflow/tfjs');
 const lz = require('./lz_string.js');
 
-// turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
+/// turns the parameter object that model.getWeights from an array of tensors into an array or arrays so that it is JSON serializable
 function marshal_parameters(param_tensor) {
   let params = param_tensor.map(x => x.arraySync());
   return lz.compressToBase64(JSON.stringify(params));
@@ -34,3 +34,5 @@ marshalled_params = marshal_parameters(model1.getWeights());
 console.log(marshalled_params.length);
 
 new_params = demarshall_parameters(marshalled_params);
+
+model2.setWeights(new_params);

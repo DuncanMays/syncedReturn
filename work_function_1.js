@@ -49,8 +49,6 @@ async function workFn(slice_input, shared_input) {
     }
   }
 
-  log(JSON.stringify(tf.version));
-
   const { lazy_load } = require('lazy_loader');
   const lz = require('lzstring');
 

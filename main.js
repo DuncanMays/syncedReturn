@@ -1,7 +1,7 @@
 
-wrk_fn_str = './work_function_1.js';
+// wrk_fn_str = './work_function_1.js';
 // wrk_fn_str = './work_function_2.js';
-// wrk_fn_str = './work_function_3.js';
+wrk_fn_str = './work_function_3.js';
 
 wrk_fn = require(wrk_fn_str);
 const lz = require('./lint/lz_string.js');
@@ -105,7 +105,7 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:1000,
   deploy_time: Date.now(),
-  time_for_training: 1000*300,
+  time_for_training: 1000*120,
   show_logs: true,
   params: central_params
 }
@@ -158,8 +158,6 @@ async function main() {
 function finish() {
   console.log('wrapping up');
 
-  console.log(worker_params.length);
-
   trained_params = aggregate(worker_params);
 
   central_model.setWeights(trained_params);
@@ -169,7 +167,7 @@ function finish() {
   [loss, accuracy] = performance.map(x => x.arraySync());
   
   console.log('work function: ', wrk_fn_str);
-  console.log('training time: ', SHARED_INPUT.time_for_training)
+  console.log('training time: ', SHARED_INPUT.time_for_training/1000)
 
   console.log("testing loss:", loss);
   console.log("testing accuracy:", accuracy);
@@ -181,6 +179,9 @@ function finish() {
 process.on('SIGINT', finish);
 
 // stops the program if it runs for longer that 1.5 time the training time
-setTimeout(finish, 1.5*SHARED_INPUT.time_for_training);
+setTimeout(() => {
+  console.log('workers are taking too long to return, force closing');
+  finish();
+}, 1.5*SHARED_INPUT.time_for_training);
 
 main();
