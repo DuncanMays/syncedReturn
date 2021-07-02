@@ -105,7 +105,7 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:1000,
   deploy_time: Date.now(),
-  time_for_training: 1000*120,
+  time_for_training: 1000*75,
   show_logs: true,
   params: central_params
 }
@@ -148,7 +148,7 @@ async function main() {
   job.requires('lazy_loader/lazy_loader');
   job.requires('aistensorflow/tfjs');
   
-  let results = await job.exec(0.01);
+  let results = await job.exec(0.015);
 
   console.log(results.length);
 
