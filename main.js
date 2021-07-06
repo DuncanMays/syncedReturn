@@ -105,7 +105,7 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:1000,
   deploy_time: Date.now(),
-  time_for_training: 1000*75,
+  time_for_training: 1000*90,
   show_logs: true,
   params: central_params
 }
@@ -134,10 +134,10 @@ async function main() {
 
   job.on('result', (value) => {
     console.log("Got a result from worker", value.sliceNumber);
-    worker_params.push(value.result);
 
     // workers will return 'null' if they can't train for some reason - this could be due to time constraints, low benchmarking score, etc.
     if (value.result != 'null') {
+      worker_params.push(value.result);
       total_completed_batches = total_completed_batches + value.result.completed_batches;
       total_shards_downloaded = total_shards_downloaded + value.result.num_shards;
     }
