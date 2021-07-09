@@ -105,7 +105,7 @@ const NUM_SLICES = 5;
 const SHARED_INPUT = {
   benchmark_length:1000,
   deploy_time: Date.now(),
-  time_for_training: 1000*90,
+  time_for_training: 1000*60,
   show_logs: true,
   params: central_params
 }
