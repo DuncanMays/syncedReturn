@@ -23,13 +23,26 @@ app.get('/', (req, res) => {
 	console.log('got a request for data allocation from', ip)
 
 	// the payload of the response
-	let payload = JSON.stringify(data_allocation[ip].num_shards)
+	let payload;
 
-	if (payload == undefined){
-		console.log('unrecognised IP');
+	// the data entry for the worker
+	let worker_data = data_allocation[ip]
+
+	if (worker_data == undefined){
+		// if there is no data entry for worker
+		console.log('unrecognised IP:', ip);
+		console.log('recognized IPs are:', Object.getOwnPropertyNames(data_allocation))
+
+		payload = 'unrecognized IP address: '+ip;
+
+	} else {
+
+		payload = JSON.stringify(worker_data["num_shards"]);
+
 	}
 
-  res.send(payload);
+	res.send(payload);
+
 });
 
 https.createServer({

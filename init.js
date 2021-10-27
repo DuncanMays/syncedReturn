@@ -2,7 +2,7 @@
 const process = require('process');
 const fs = require('fs');
 
-const work_fn = require('./work_function_1.js');
+const work_fn = require('./init_work_function.js');
 
 async function main() {
   // the compute api
@@ -10,9 +10,8 @@ async function main() {
   const compute = require('dcp/compute');
   const { RemoteDataSet } = require('dcp/compute');
 
-  // const slice_URL = 'http://localhost:7999'
-  const slice_URL = new URL('https://localhost:7999');
-  // const slice_URL = new URL('https://192.168.2.19:7999');
+  // const slice_URL = new URL('https://localhost:7999');
+  const slice_URL = new URL('https://192.168.2.19:7999');
   const URL_list = [];
   for (let i=0; i<5; i++){
     URL_list.push(slice_URL)
@@ -23,7 +22,7 @@ async function main() {
   let job = compute.for(remoteDataSet, work_fn);
   // let job = compute.for(URL_list, work_fn);
 
-  job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler");});
+  job.on('accepted', () => {console.log("Job accepted was accepted by the scheduler, id:", job.address.slice(0, 15));});
   job.on('status', (status) => {console.log("Got a status update:", status);});
   job.on('result', (value) => {console.log("Got a result:", value);});
   job.on('error', (err) => {console.log('there was an error: ', err);});

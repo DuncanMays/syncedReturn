@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
 	// getting the IP address of the requester
 	const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-	console.log('got a GET request from', ip)
+	console.log('got a request for ip address from', ip)
 
 	// the payload of the response
 	let payload = {'ip_addr':ip};
