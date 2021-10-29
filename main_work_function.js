@@ -74,8 +74,9 @@ async function workFn(slice_input, shared_input) {
   function get_model() {
     const model = tf.sequential();
 
-    model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-    model.add(tf.layers.dense({units: 20, activation: 'relu'}))
+    model.add(tf.layers.dense({units: 300, inputShape: [784], activation: 'relu'}))
+    model.add(tf.layers.dense({units: 124, activation: 'relu'}))
+    model.add(tf.layers.dense({units: 60, activation: 'relu'}))
     model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
     model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:[], optimizer: tf.train.adam()});
@@ -147,21 +148,34 @@ async function workFn(slice_input, shared_input) {
 
   log('starting training')
 
+  const num_epochs = 1
+
   await model.fit(imagesTensor, labelsTensor, {
-    yieldEvery: 5000,
-    epochs: 3,
+    epochs: num_epochs,
     callbacks: {
       onBatchEnd: (batch, logs) => {
           completedBatches = completedBatches + 1;
 
-          // give the scheduler a progress update every 1000 batches 
-          if (completedBatches%1000 == 0) {
-            train_progress_ratio = completedBatches*32/(imagesTensor.shape[0] * 3);
+          // give the scheduler a progress update every 100 batches 
+          if (completedBatches%100 == 0) {
+            train_progress_ratio = completedBatches*32/(imagesTensor.shape[0] * num_epochs);
             progress((TRAIN_PROGRESS-DATA_LOAD_PROGRESS)*train_progress_ratio + DATA_LOAD_PROGRESS);
           }
       }
     }
   });
+
+  // model.fit(imagesTensor, labelsTensor, {
+  //   batchSize: imagesTensor.shape[0],
+  //   epochs: num_epochs,
+  //   yieldEvery: 1000,
+  //   callbacks: {
+  //     onYield: (epoch, batch, logs) => {
+  //       train_progress_ratio = batch*32/(imagesTensor.shape[0] * num_epochs);
+  //       progress((TRAIN_PROGRESS-DATA_LOAD_PROGRESS)*train_progress_ratio + DATA_LOAD_PROGRESS);
+  //     }
+  //   }
+  // });
 
   progress(TRAIN_PROGRESS)
 

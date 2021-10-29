@@ -1,1 +1,3 @@
 node_modules
+preprocessedMNIST.txt
+out.txt

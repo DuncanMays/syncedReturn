@@ -15,11 +15,12 @@ module.exports = async function worker(slice_input) {
 	function get_model() {
 		const model = tf.sequential();
 
-		model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-		model.add(tf.layers.dense({units: 20, activation: 'relu'}))
+		model.add(tf.layers.dense({units: 300, inputShape: [784], activation: 'relu'}))
+		model.add(tf.layers.dense({units: 124, activation: 'relu'}))
+		model.add(tf.layers.dense({units: 60, activation: 'relu'}))
 		model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
-		model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:[], optimizer: tf.train.adam()});
+		model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:['accuracy'], optimizer: tf.train.adam()});
 
 		return model;
 	}
@@ -147,9 +148,10 @@ module.exports = async function worker(slice_input) {
 	// P_d is the amount of data in each data shard, which is one since a data shard was the measurement unit
 	const P_d = 1;
 	// P_m is the amount of data in the model's parameters, which must be expressed as a ratio wrt the size of a data shard
-	const P_m = 0.354;
+	// const P_m = 0.354;
+	const P_m = 3195140/1340536;
 	// mu is the number of training iterations, we should probably set this automatically, but for the time being this is fine
-	const mu = 3;
+	const mu = 1;
 
 	let num_shards = (D - 2*P_m/comm)/(mu/comp + P_d/comm)
 

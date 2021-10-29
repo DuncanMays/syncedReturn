@@ -5,8 +5,9 @@ const fs = require('fs');
 function get_model() {
 	const model = tf.sequential();
 
-	model.add(tf.layers.dense({units: 50, inputShape: [784], activation: 'relu'}))
-	model.add(tf.layers.dense({units: 20, activation: 'relu'}))
+	model.add(tf.layers.dense({units: 300, inputShape: [784], activation: 'relu'}))
+	model.add(tf.layers.dense({units: 124, activation: 'relu'}))
+	model.add(tf.layers.dense({units: 60, activation: 'relu'}))
 	model.add(tf.layers.dense({units: 10, activation: 'softmax'}))
 
 	model.compile({loss: tf.losses.softmaxCrossEntropy, metrics:[], optimizer: tf.train.adam()});
