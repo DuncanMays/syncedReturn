@@ -1,3 +1,4 @@
 node_modules
 preprocessedMNIST.txt
 out.txt
+data_allocation.txt

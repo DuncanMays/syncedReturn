@@ -6,9 +6,6 @@ This project uses DCP, which is a task-sharing protocol written in JavaScript. I
 
 ## File Guide
 
-### data_allocation.txt
-Holds the JSON serialization of an object that gives the amount of data each worker should be allocated, indexed by their IP address. 
-
 ### data_requirements.js
 Holds the names of the DCP modules which contain the MNIST data we will train on.
 
